@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Microsoft 365 Mailer
  * Description: A reliable, SMTP-free alternative for sending WordPress emails through Microsoft 365 using Microsoft Graph API and Application permissions.
- * Version: 1.2.2
+ * Version: 1.2.3
  * Author: MD Fayazur Rahman
  * License: GPL v2 or later
  */
@@ -42,6 +42,26 @@ function m365_get_active_tab() {
     $tab = $_GET['tab'] ?? 'settings';
     return in_array($tab, ['settings', 'guide', 'logs'], true) ? $tab : 'settings';
 }
+
+/**
+ * ==================================================
+ * Suppress third-party admin notices on our plugin page
+ * ==================================================
+ */
+add_action('admin_head', function () {
+
+    if (!isset($_GET['page']) || $_GET['page'] !== 'm365-mailer') {
+        return;
+    }
+
+    // Remove all admin notice hooks added by other plugins/themes
+    remove_all_actions('admin_notices');
+    remove_all_actions('all_admin_notices');
+    remove_all_actions('network_admin_notices');
+    remove_all_actions('user_admin_notices');
+
+});
+
 
 /**
  * Preserve client secret unless explicitly changed
