@@ -351,7 +351,7 @@ add_action('wp_ajax_m365_validate_sender', function () {
 
 /**
  * ==================================================
- * AJAX: Send Test Email
+ * AJAX: Send Test Email (Styled HTML)
  * ==================================================
  */
 add_action('wp_ajax_m365_send_test_email', function () {
@@ -378,8 +378,79 @@ add_action('wp_ajax_m365_send_test_email', function () {
         ]);
     }
 
-    $subject = 'Microsoft 365 Mailer – Test Email';
-    $message = '<p>✅ This is a test email sent successfully using Microsoft 365 Mailer.</p>';
+    $site_name = wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
+    $timestamp = current_time('Y-m-d H:i:s');
+
+    $subject = sprintf(
+        'Microsoft 365 Mailer: Test Email – %s – HTML Version',
+        $site_name
+    );
+
+    $message = '
+    <div style="background:#f6f7f8;padding:40px 0;">
+        <div style="
+            max-width:600px;
+            margin:0 auto;
+            background:#ffffff;
+            border-radius:6px;
+            box-shadow:0 1px 4px rgba(0,0,0,0.08);
+            font-family:Arial,Helvetica,sans-serif;
+        ">
+
+            <div style="
+                text-align:center;
+                padding:30px 20px;
+                border-bottom:1px solid #eaeaea;
+            ">
+                <h1 style="
+                    margin:0;
+                    font-size:26px;
+                    color:#111;
+                    letter-spacing:0.5px;
+                ">
+                    Microsoft 365 Mailer
+                </h1>
+            </div>
+
+            <div style="padding:30px 35px;color:#333;font-size:14px;line-height:1.7;">
+
+                <p style="font-size:16px;margin-top:0;">
+                    🎉 <strong>Congrats, test email was sent successfully!</strong>
+                </p>
+
+                <p>
+                    Thank you for using <strong>Microsoft 365 Mailer</strong> Plugin —
+                    the ultimate Microsoft Graph–powered mailer plugin designed to
+                    ensure your WordPress emails are delivered reliably without SMTP.
+                </p>
+
+                <p>
+                    Microsoft 365 Mailer is a <strong>free and open-source</strong> plugin,
+                    built with enterprise-grade security in mind and without vendor lock-in.
+                    You stay in full control of your Microsoft 365 infrastructure.
+                </p>
+
+                <p style="margin-top:30px;">
+                    Regards,<br>
+                    <strong>Md Fayazur Rahman</strong><br>
+                    Creator,<br>
+                    Microsoft 365 Mailer
+                </p>
+
+                <p style="
+                    margin-top:40px;
+                    font-size:12px;
+                    color:#777;
+                    border-top:1px solid #eee;
+                    padding-top:15px;
+                ">
+                    This email was sent from <strong>' . esc_html($site_name) . '</strong>
+                    at ' . esc_html($timestamp) . '
+                </p>
+            </div>
+        </div>
+    </div>
+    ';
 
     $sent = m365_send_mail($to, $subject, $message);
 

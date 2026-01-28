@@ -132,7 +132,7 @@ function m365_render_settings_tab() {
             <button type="button"
                     class="button button-secondary"
                     id="m365-validate-sender">
-                Save & Validate Sender
+                Save & Validate
             </button>
 
             <span class="spinner"
