@@ -423,7 +423,7 @@ add_action('admin_init', function () {
         m365_log_event('success', '-', 'Microsoft Graph admin consent granted');
 
         // Optional: clean URL
-        wp_redirect(admin_url('options-general.php?page=m365-mailer'));
+        wp_redirect(admin_url());
         exit;
     }
 });

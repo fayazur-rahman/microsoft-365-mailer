@@ -308,7 +308,7 @@ function m365_render_settings_tab() {
                 return;
             }
 
-            const redirectUri = encodeURIComponent(window.location.href);
+            const redirectUri = encodeURIComponent('<?php echo admin_url(); ?>');
 
             const url =
                 'https://login.microsoftonline.com/' + tenantId +
@@ -316,7 +316,7 @@ function m365_render_settings_tab() {
                 '?client_id=' + clientId +
                 '&redirect_uri=' + redirectUri;
 
-            window.open(url, '_blank');
+            window.location.href = url;
         });
     }
 
