@@ -24,6 +24,7 @@ define('M365_MAILER_URL', plugin_dir_url(__FILE__));
  * Plugin action links (Plugins page)
  * ==================================================
  */
+
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), function ($links) {
     array_unshift(
         $links,
