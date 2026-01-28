@@ -148,3 +148,20 @@ add_action('update_option_m365_client_id', 'm365_clear_graph_token', 10, 0);
 add_action('update_option_m365_client_secret', 'm365_clear_graph_token', 10, 0);
 add_action('update_option_m365_tenant_id', 'm365_clear_graph_token', 10, 0);
 add_action('update_option_m365_from_email', 'm365_clear_graph_token', 10, 0);
+
+
+
+/**
+ * ==================================================
+ * GitHub Plugin Auto Updates
+ * ==================================================
+ */
+require_once M365_MAILER_PATH . 'includes/plugin-update-checker/plugin-update-checker.php';
+
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+PucFactory::buildUpdateChecker(
+    'https://github.com/fayazur-rahman/microsoft-365-mailer/',
+    __FILE__,
+    'microsoft-365-mailer'
+);
