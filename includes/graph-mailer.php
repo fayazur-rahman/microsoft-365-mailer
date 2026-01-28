@@ -237,26 +237,14 @@ function m365_send_mail($to, $subject, $message, $headers = [], $attachments = [
     $body        = json_decode(wp_remote_retrieve_body($response), true);
 
     if ($status_code !== 202) {
-
-    $errorMessage = $body['error']['message'] ?? 'Graph rejected request';
-
-    if (strpos($errorMessage, 'Authorization_RequestDenied') !== false
-        || strpos($errorMessage, 'Insufficient privileges') !== false) {
-
-        $errorMessage .=
-            ' — Mail.Send (Application) permission is missing or admin consent was not granted.';
+        m365_log_event(
+            'fail',
+            $recipients,
+            $subject,
+            $body['error']['message'] ?? 'Graph rejected request'
+        );
+        return false;
     }
-
-    m365_log_event(
-        'fail',
-        $recipients,
-        $subject,
-        $errorMessage
-    );
-
-    return false;
-}
-
 
     m365_log_event('success', $recipients, $subject);
     return true;
@@ -410,20 +398,3 @@ add_action('wp_ajax_m365_send_test_email', function () {
     ]);
 });
 
-// Admin Concent
-add_action('admin_init', function () {
-
-    if (!current_user_can('manage_options')) {
-        return;
-    }
-
-    if (isset($_GET['admin_consent']) && $_GET['admin_consent'] === 'True') {
-
-        update_option('m365_admin_consent_granted', true);
-        m365_log_event('success', '-', 'Microsoft Graph admin consent granted');
-
-        // Optional: clean URL
-        wp_redirect(admin_url());
-        exit;
-    }
-});
