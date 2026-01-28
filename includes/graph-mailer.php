@@ -112,7 +112,6 @@ function m365_parse_headers($headers) {
     foreach ($headers as $header) {
 
         if (stripos($header, 'Reply-To:') === 0) {
-            remember:
             $email = trim(substr($header, 9));
             $parsed['replyTo'][] = ['emailAddress' => ['address' => $email]];
         }
@@ -258,7 +257,7 @@ function m365_send_mail($to, $subject, $message, $headers = [], $attachments = [
  */
 add_filter('wp_mail', function ($args) {
 
-    $sent = m365_send_mail(
+    m365_send_mail(
         $args['to'],
         $args['subject'],
         $args['message'],
@@ -266,16 +265,12 @@ add_filter('wp_mail', function ($args) {
         $args['attachments']
     );
 
-    if ($sent) {
-        add_filter('wp_mail_succeeded', '__return_true', 10, 0);
-    }
-
     return $args;
 });
 
 /**
  * ==================================================
- * AJAX: Save & Authenticate (no sender)
+ * AJAX: Save & Authenticate (no sender here)
  * ==================================================
  */
 add_action('wp_ajax_m365_save_and_auth', function () {
@@ -296,9 +291,14 @@ add_action('wp_ajax_m365_save_and_auth', function () {
     delete_transient('m365_graph_token');
 
     if (m365_get_access_token()) {
+        update_option('m365_is_authenticated', true);
         m365_log_event('success', '-', 'Authentication successful');
         wp_send_json_success(['message' => 'Successfully authenticated with Microsoft 365.']);
     }
+
+    // Auth failed → invalidate state
+    update_option('m365_is_authenticated', false);
+    update_option('m365_sender_validated', false);
 
     $logs = get_option('m365_mail_logs', []);
     $last = end($logs);
@@ -336,9 +336,12 @@ add_action('wp_ajax_m365_validate_sender', function () {
 
     if ($result === true) {
         update_option('m365_from_email', $sender);
+        update_option('m365_sender_validated', true);
         m365_log_event('success', $sender, 'Sender validated');
         wp_send_json_success(['message' => 'Sender email validated successfully.']);
     }
+
+    update_option('m365_sender_validated', false);
 
     $logs = get_option('m365_mail_logs', []);
     $last = end($logs);
