@@ -21,7 +21,7 @@ define('M365_MAILER_URL', plugin_dir_url(__FILE__));
 
 /**
  * ==================================================
- * Plugin action links (Plugins page)
+ * Plugin action links (Plugin page)
  * ==================================================
  */
 
