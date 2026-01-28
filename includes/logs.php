@@ -55,7 +55,16 @@ function m365_render_logs_tab() {
 
     <div style="margin-top:20px; max-width:1000px;">
 
-        <h2>Email Logs</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h2 style="margin:0;">Email Logs</h2>
+
+            <button type="button"
+                    class="button button-secondary"
+                    id="m365-clear-logs">
+                Clear Logs
+            </button>
+        </div>
+
 
         <p>
             This log shows the most recent email delivery attempts made via
@@ -118,6 +127,51 @@ function m365_render_logs_tab() {
         <?php endif; ?>
 
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const clearBtn = document.getElementById('m365-clear-logs');
+
+        if (!clearBtn) return;
+
+        clearBtn.addEventListener('click', function () {
+
+            if (!confirm('Are you sure you want to clear all email logs? This action cannot be undone.')) {
+                return;
+            }
+
+            clearBtn.disabled = true;
+            clearBtn.textContent = 'Clearing...';
+
+            fetch(ajaxurl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: 'm365_clear_logs',
+                    nonce: '<?php echo wp_create_nonce('m365_clear_logs_nonce'); ?>'
+                })
+            })
+            .then(r => r.json())
+            .then(r => {
+                if (r.success) {
+                    location.reload();
+                } else {
+                    alert(r.data.message || 'Failed to clear logs.');
+                    clearBtn.disabled = false;
+                    clearBtn.textContent = 'Clear Logs';
+                }
+            })
+            .catch(() => {
+                alert('Unexpected error occurred.');
+                clearBtn.disabled = false;
+                clearBtn.textContent = 'Clear Logs';
+            });
+        });
+
+    });
+    </script>
+
 
     <?php
 }

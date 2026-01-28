@@ -308,6 +308,27 @@ add_action('wp_ajax_m365_save_and_auth', function () {
 
 /**
  * ==================================================
+ * AJAX: Clear Email Logs
+ * ==================================================
+ */
+add_action('wp_ajax_m365_clear_logs', function () {
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Unauthorized']);
+    }
+
+    check_ajax_referer('m365_clear_logs_nonce', 'nonce');
+
+    update_option('m365_mail_logs', []);
+
+    m365_log_event('success', '-', 'Email logs cleared');
+
+    wp_send_json_success(['message' => 'Logs cleared successfully.']);
+});
+
+
+/**
+ * ==================================================
  * AJAX: Validate Sender Email
  * ==================================================
  */
