@@ -281,4 +281,34 @@ function m365_render_settings_tab() {
     });
     </script>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            const changeBtn = document.getElementById('m365-change-secret');
+
+            if (changeBtn) {
+                changeBtn.addEventListener('click', function () {
+
+                    const td = changeBtn.closest('td');
+
+                    td.innerHTML = `
+                        <input type="password"
+                            class="regular-text"
+                            name="m365_client_secret"
+                            required
+                            autocomplete="new-password">
+
+                        <p class="description">
+                            Paste the <strong>new Client Secret Value</strong> generated in
+                            Microsoft Entra ID.<br>
+                            This value is shown only once.
+                        </p>
+                    `;
+                });
+            }
+
+        });
+        </script>
+
+
 <?php } ?>
