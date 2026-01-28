@@ -61,7 +61,15 @@ function m365_get_access_token() {
         return $body['access_token'];
     }
 
-    m365_log_event('fail', '-', 'Token Request Failed', 'Invalid token response');
+    $error = $body['error_description'] ?? ($body['error'] ?? 'Invalid token response');
+
+    m365_log_event(
+        'fail',
+        '-',
+        'Authentication failed',
+        $error
+    );
+
     return false;
 }
 
@@ -318,4 +326,43 @@ add_filter('wp_mail', function ($args) {
     }
 
     return $args;
+});
+
+add_action('wp_ajax_m365_save_and_auth', function () {
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Unauthorized']);
+    }
+
+    check_ajax_referer('m365_save_auth_nonce', 'nonce');
+
+    // Save options
+    update_option('m365_client_id', sanitize_text_field($_POST['m365_client_id'] ?? ''));
+    update_option('m365_tenant_id', sanitize_text_field($_POST['m365_tenant_id'] ?? ''));
+    update_option('m365_from_email', sanitize_email($_POST['m365_from_email'] ?? ''));
+
+    if (!empty($_POST['m365_client_secret'])) {
+        update_option('m365_client_secret', sanitize_text_field($_POST['m365_client_secret']));
+    }
+
+    // Force token refresh
+    delete_transient('m365_graph_token');
+
+    // Try authenticating immediately
+    $token = m365_get_access_token();
+
+    if ($token) {
+        m365_log_event('success', '-', 'Authentication successful');
+        wp_send_json_success([
+            'message' => 'Successfully authenticated with Microsoft 365.'
+        ]);
+    }
+
+    // Pull detailed error from logs
+    $logs = get_option('m365_mail_logs', []);
+    $last = end($logs);
+
+    wp_send_json_error([
+        'message' => $last['error'] ?? 'Authentication failed.'
+    ]);
 });

@@ -22,7 +22,7 @@ function m365_has_client_secret() {
 function m365_render_settings_tab() {
     ?>
 
-    <form method="post" action="options.php" style="margin-top:20px;">
+    <form method="post" onsubmit="return false;" style="margin-top:20px;">
         <?php settings_fields('m365_mailer'); ?>
 
         <table class="form-table">
@@ -124,7 +124,16 @@ function m365_render_settings_tab() {
 
         </table>
 
-        <?php submit_button('Save Changes'); ?>
+        <p>
+            <button type="button" class="button button-primary" id="m365-save-auth">
+                Save & Authenticate
+            </button>
+
+            <span id="m365-auth-spinner" class="spinner" style="float:none;"></span>
+        </p>
+
+        <div id="m365-auth-status" style="margin-top:10px;"></div>
+
     </form>
 
     <hr>
@@ -234,5 +243,56 @@ function m365_render_settings_tab() {
     });
     </script>
 
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const btn = document.getElementById('m365-save-auth');
+        const spinner = document.getElementById('m365-auth-spinner');
+        const statusBox = document.getElementById('m365-auth-status');
+
+        if (!btn) return;
+
+        btn.addEventListener('click', function () {
+
+            statusBox.innerHTML = '';
+            spinner.classList.add('is-active');
+            btn.disabled = true;
+
+            const form = btn.closest('form');
+            const formData = new FormData(form);
+
+            formData.append('action', 'm365_save_and_auth');
+            formData.append('nonce', '<?php echo wp_create_nonce('m365_save_auth_nonce'); ?>');
+
+            fetch(ajaxurl, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+
+                spinner.classList.remove('is-active');
+                btn.disabled = false;
+
+                if (data.success) {
+                    statusBox.innerHTML =
+                        '<p style="color:green;">✔ ' + data.data.message + '</p>';
+                } else {
+                    statusBox.innerHTML =
+                        '<p style="color:#d63638;">✖ ' + data.data.message + '</p>';
+                }
+            })
+            .catch(() => {
+                spinner.classList.remove('is-active');
+                btn.disabled = false;
+                statusBox.innerHTML =
+                    '<p style="color:#d63638;">✖ Unexpected error occurred.</p>';
+            });
+        });
+    });
+    </script>
+
+
     <?php
 }
+
