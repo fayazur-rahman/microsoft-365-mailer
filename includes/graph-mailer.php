@@ -410,3 +410,20 @@ add_action('wp_ajax_m365_send_test_email', function () {
     ]);
 });
 
+// Admin Concent
+add_action('admin_init', function () {
+
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    if (isset($_GET['admin_consent']) && $_GET['admin_consent'] === 'True') {
+
+        update_option('m365_admin_consent_granted', true);
+        m365_log_event('success', '-', 'Microsoft Graph admin consent granted');
+
+        // Optional: clean URL
+        wp_redirect(admin_url('options-general.php?page=m365-mailer'));
+        exit;
+    }
+});
