@@ -124,16 +124,20 @@ function m365_render_settings_tab() {
 
         </table>
 
+        <!-- Save & Authenticate -->
         <p>
-            <button type="button" class="button button-primary" id="m365-save-auth">
+            <button type="button"
+                    class="button button-primary"
+                    id="m365-save-auth">
                 Save & Authenticate
             </button>
 
-            <span id="m365-auth-spinner" class="spinner" style="float:none;"></span>
+            <span id="m365-auth-spinner"
+                  class="spinner"
+                  style="float:none;"></span>
         </p>
 
         <div id="m365-auth-status" style="margin-top:10px;"></div>
-
     </form>
 
     <hr>
@@ -158,20 +162,22 @@ function m365_render_settings_tab() {
             Send Test Email
         </button>
 
-        <span class="spinner"
-              id="m365-test-spinner"
-              style="float:none; margin-top:10px; display:none;"></span>
+        <span id="m365-test-spinner"
+              class="spinner"
+              style="float:none; margin-top:10px;"></span>
 
         <div id="m365-test-result" style="margin-top:12px;"></div>
     </div>
 
     <!-- ============================= -->
-    <!-- Change Secret JS -->
+    <!-- JavaScript (AJAX + UI) -->
     <!-- ============================= -->
     <script>
     document.addEventListener('DOMContentLoaded', function () {
 
-        /* Change Client Secret */
+        /* ------------------------------
+         * Change Client Secret
+         * ------------------------------ */
         const changeBtn = document.getElementById('m365-change-secret');
         if (changeBtn) {
             changeBtn.addEventListener('click', function () {
@@ -188,111 +194,101 @@ function m365_render_settings_tab() {
             });
         }
 
-        /* AJAX Test Email */
-        const btn     = document.getElementById('m365-send-test-btn');
-        const email   = document.getElementById('m365-test-email');
-        const spinner = document.getElementById('m365-test-spinner');
-        const result  = document.getElementById('m365-test-result');
+        /* ------------------------------
+         * AJAX: Send Test Email
+         * ------------------------------ */
+        const testBtn   = document.getElementById('m365-send-test-btn');
+        const testEmail = document.getElementById('m365-test-email');
+        const testSpin  = document.getElementById('m365-test-spinner');
+        const testRes   = document.getElementById('m365-test-result');
 
-        if (!btn) return;
+        if (testBtn) {
+            testBtn.addEventListener('click', function () {
 
-        btn.addEventListener('click', function () {
+                testRes.innerHTML = '';
+                testSpin.classList.add('is-active');
+                testBtn.disabled = true;
 
-            result.innerHTML = '';
-            spinner.style.display = 'inline-block';
-            btn.disabled = true;
-
-            fetch(ajaxurl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: new URLSearchParams({
-                    action: 'm365_send_test_email',
-                    nonce: '<?php echo wp_create_nonce('m365_test_email_nonce'); ?>',
-                    email: email.value
+                fetch(ajaxurl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'm365_send_test_email',
+                        nonce: '<?php echo wp_create_nonce('m365_test_email_nonce'); ?>',
+                        email: testEmail.value
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
+                .then(res => res.json())
+                .then(data => {
 
-                spinner.style.display = 'none';
-                btn.disabled = false;
+                    testSpin.classList.remove('is-active');
+                    testBtn.disabled = false;
 
-                if (data.success) {
-                    result.innerHTML =
-                        '<div style="color:#0a7d00;font-weight:600;">✔ ' +
-                        data.data.message +
-                        '</div>';
-                } else {
-                    result.innerHTML =
-                        '<div style="color:#b32d2e;font-weight:600;">✖ Failed</div>' +
-                        '<div style="margin-top:6px;color:#555;">' +
-                        data.data.message +
-                        '</div>';
-                }
-            })
-            .catch(() => {
-                spinner.style.display = 'none';
-                btn.disabled = false;
-                result.innerHTML =
-                    '<div style="color:#b32d2e;">Unexpected error occurred.</div>';
+                    if (data.success) {
+                        testRes.innerHTML =
+                            '<div style="color:#0a7d00;font-weight:600;">✔ ' +
+                            data.data.message + '</div>';
+                    } else {
+                        testRes.innerHTML =
+                            '<div style="color:#b32d2e;font-weight:600;">✖ Failed</div>' +
+                            '<div style="margin-top:6px;color:#555;">' +
+                            data.data.message + '</div>';
+                    }
+                })
+                .catch(() => {
+                    testSpin.classList.remove('is-active');
+                    testBtn.disabled = false;
+                    testRes.innerHTML =
+                        '<div style="color:#b32d2e;">Unexpected error occurred.</div>';
+                });
             });
-        });
+        }
+
+        /* ------------------------------
+         * AJAX: Save & Authenticate
+         * ------------------------------ */
+        const authBtn   = document.getElementById('m365-save-auth');
+        const authSpin  = document.getElementById('m365-auth-spinner');
+        const authStat  = document.getElementById('m365-auth-status');
+
+        if (authBtn) {
+            authBtn.addEventListener('click', function () {
+
+                authStat.innerHTML = '';
+                authSpin.classList.add('is-active');
+                authBtn.disabled = true;
+
+                const form = authBtn.closest('form');
+                const data = new FormData(form);
+
+                data.append('action', 'm365_save_and_auth');
+                data.append('nonce', '<?php echo wp_create_nonce('m365_save_auth_nonce'); ?>');
+
+                fetch(ajaxurl, {
+                    method: 'POST',
+                    body: data
+                })
+                .then(res => res.json())
+                .then(data => {
+
+                    authSpin.classList.remove('is-active');
+                    authBtn.disabled = false;
+
+                    authStat.innerHTML = data.success
+                        ? '<p style="color:#0a7d00;font-weight:600;">✔ ' + data.data.message + '</p>'
+                        : '<p style="color:#d63638;font-weight:600;">✖ ' + data.data.message + '</p>';
+                })
+                .catch(() => {
+                    authSpin.classList.remove('is-active');
+                    authBtn.disabled = false;
+                    authStat.innerHTML =
+                        '<p style="color:#d63638;">✖ Unexpected error occurred.</p>';
+                });
+            });
+        }
 
     });
     </script>
-
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-
-        const btn = document.getElementById('m365-save-auth');
-        const spinner = document.getElementById('m365-auth-spinner');
-        const statusBox = document.getElementById('m365-auth-status');
-
-        if (!btn) return;
-
-        btn.addEventListener('click', function () {
-
-            statusBox.innerHTML = '';
-            spinner.classList.add('is-active');
-            btn.disabled = true;
-
-            const form = btn.closest('form');
-            const formData = new FormData(form);
-
-            formData.append('action', 'm365_save_and_auth');
-            formData.append('nonce', '<?php echo wp_create_nonce('m365_save_auth_nonce'); ?>');
-
-            fetch(ajaxurl, {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-
-                spinner.classList.remove('is-active');
-                btn.disabled = false;
-
-                if (data.success) {
-                    statusBox.innerHTML =
-                        '<p style="color:green;">✔ ' + data.data.message + '</p>';
-                } else {
-                    statusBox.innerHTML =
-                        '<p style="color:#d63638;">✖ ' + data.data.message + '</p>';
-                }
-            })
-            .catch(() => {
-                spinner.classList.remove('is-active');
-                btn.disabled = false;
-                statusBox.innerHTML =
-                    '<p style="color:#d63638;">✖ Unexpected error occurred.</p>';
-            });
-        });
-    });
-    </script>
-
 
     <?php
 }
-

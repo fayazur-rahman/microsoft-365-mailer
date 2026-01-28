@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Microsoft 365 Mailer
  * Description: A reliable, SMTP-free alternative for sending WordPress emails through Microsoft 365 using Microsoft Graph API and Application permissions.
- * Version: 1.2.5
+ * Version: 1.2.6
  * Author: MD Fayazur Rahman
  * License: GPL v2 or later
  */
