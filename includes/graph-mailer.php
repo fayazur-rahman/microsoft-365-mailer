@@ -237,14 +237,26 @@ function m365_send_mail($to, $subject, $message, $headers = [], $attachments = [
     $body        = json_decode(wp_remote_retrieve_body($response), true);
 
     if ($status_code !== 202) {
-        m365_log_event(
-            'fail',
-            $recipients,
-            $subject,
-            $body['error']['message'] ?? 'Graph rejected request'
-        );
-        return false;
+
+    $errorMessage = $body['error']['message'] ?? 'Graph rejected request';
+
+    if (strpos($errorMessage, 'Authorization_RequestDenied') !== false
+        || strpos($errorMessage, 'Insufficient privileges') !== false) {
+
+        $errorMessage .=
+            ' — Mail.Send (Application) permission is missing or admin consent was not granted.';
     }
+
+    m365_log_event(
+        'fail',
+        $recipients,
+        $subject,
+        $errorMessage
+    );
+
+    return false;
+}
+
 
     m365_log_event('success', $recipients, $subject);
     return true;

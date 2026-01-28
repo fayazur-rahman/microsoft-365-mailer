@@ -90,6 +90,20 @@ function m365_render_settings_tab() {
 
         </table>
 
+        <!-- Grant Root User Permission -->
+        <p>
+            <a href="#"
+            class="button"
+            id="m365-grant-permissions">
+                Grant Microsoft Permissions
+            </a>
+        </p>
+
+        <p class="description">
+            You must grant <strong>Mail.Send (Application)</strong> permission
+            using a <strong>Global Administrator</strong> account.
+        </p>
+
         <!-- Save & Authenticate -->
         <p>
             <button type="button"
@@ -279,6 +293,33 @@ function m365_render_settings_tab() {
             });
         };
     });
+
+    const grantBtn = document.getElementById('m365-grant-permissions');
+
+    if (grantBtn) {
+        grantBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const tenantId = document.querySelector('[name="m365_tenant_id"]').value;
+            const clientId = document.querySelector('[name="m365_client_id"]').value;
+
+            if (!tenantId || !clientId) {
+                alert('Please enter Client ID and Tenant ID first.');
+                return;
+            }
+
+            const redirectUri = encodeURIComponent(window.location.href);
+
+            const url =
+                'https://login.microsoftonline.com/' + tenantId +
+                '/adminconsent' +
+                '?client_id=' + clientId +
+                '&redirect_uri=' + redirectUri;
+
+            window.open(url, '_blank');
+        });
+    }
+
     </script>
 
     <script>
