@@ -6,6 +6,7 @@
  * - Microsoft Graph sendMail
  * - wp_mail override
  * - Headers, attachments, HTML handling
+ * - AJAX auth & sender validation
  */
 
 if (!defined('ABSPATH')) {
@@ -46,7 +47,7 @@ function m365_get_access_token() {
     );
 
     if (is_wp_error($response)) {
-        m365_log_event('fail', '-', 'Token Request Failed', $response->get_error_message());
+        m365_log_event('fail', '-', 'Authentication failed', $response->get_error_message());
         return false;
     }
 
@@ -61,59 +62,15 @@ function m365_get_access_token() {
         return $body['access_token'];
     }
 
-    $error = $body['error_description'] ?? ($body['error'] ?? 'Invalid token response');
-
     m365_log_event(
         'fail',
         '-',
         'Authentication failed',
-        $error
+        $body['error_description'] ?? 'Invalid token response'
     );
 
     return false;
 }
-
-/**
- * ==================================================
- * AJAX: Send Test Email
- * ==================================================
- */
-add_action('wp_ajax_m365_send_test_email', function () {
-
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(['message' => 'Unauthorized']);
-    }
-
-    check_ajax_referer('m365_test_email_nonce', 'nonce');
-
-    $to = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
-
-    if (!is_email($to)) {
-        wp_send_json_error([
-            'message' => 'Invalid email address provided.'
-        ]);
-    }
-
-    $subject = 'Microsoft 365 Mailer – Test Email';
-    $message = '<h3>Success 🎉</h3><p>This is a test email sent via <strong>Microsoft 365 Mailer</strong>.</p>';
-
-    $result = m365_send_mail($to, $subject, $message);
-
-    if ($result === true) {
-        wp_send_json_success([
-            'message' => 'Test email sent successfully.'
-        ]);
-    }
-
-    // Pull last log entry for detailed error
-    $logs = get_option('m365_mail_logs', []);
-    $last = end($logs);
-
-    wp_send_json_error([
-        'message' => $last['error'] ?? 'Unknown error occurred.'
-    ]);
-});
-
 
 /**
  * ==================================================
@@ -155,6 +112,7 @@ function m365_parse_headers($headers) {
     foreach ($headers as $header) {
 
         if (stripos($header, 'Reply-To:') === 0) {
+            remember:
             $email = trim(substr($header, 9));
             $parsed['replyTo'][] = ['emailAddress' => ['address' => $email]];
         }
@@ -175,7 +133,7 @@ function m365_parse_headers($headers) {
 
 /**
  * ==================================================
- * Prepare attachments (Graph limit: 4MB)
+ * Prepare attachments (Graph limit ~4MB)
  * ==================================================
  */
 function m365_prepare_attachments($attachments) {
@@ -208,7 +166,7 @@ function m365_prepare_attachments($attachments) {
  * Send Mail via Microsoft Graph
  * ==================================================
  */
-function m365_send_mail($to, $subject, $message, $headers = [], $attachments = []) {
+function m365_send_mail($to, $subject, $message, $headers = [], $attachments = [], $force_sender = null) {
 
     $access_token = m365_get_access_token();
     if (!$access_token) {
@@ -216,7 +174,7 @@ function m365_send_mail($to, $subject, $message, $headers = [], $attachments = [
         return false;
     }
 
-    $from_email = get_option('m365_from_email');
+    $from_email = $force_sender ?: get_option('m365_from_email');
     if (!$from_email) {
         m365_log_event('fail', $to, $subject, 'Sender email not configured');
         return false;
@@ -226,7 +184,7 @@ function m365_send_mail($to, $subject, $message, $headers = [], $attachments = [
         ? $to
         : array_map('trim', explode(',', $to));
 
-    $parsed_headers = m365_parse_headers($headers);
+    $parsed_headers    = m365_parse_headers($headers);
     $graph_attachments = m365_prepare_attachments($attachments);
 
     $payload = [
@@ -277,28 +235,17 @@ function m365_send_mail($to, $subject, $message, $headers = [], $attachments = [
     }
 
     $status_code = wp_remote_retrieve_response_code($response);
-    $body        = wp_remote_retrieve_body($response);
-    $error_msg   = 'Unknown error';
-
-    if (!empty($body)) {
-        $json = json_decode($body, true);
-        if (isset($json['error']['message'])) {
-            $error_msg = $json['error']['message'];
-        } elseif (isset($json['error']['code'])) {
-            $error_msg = $json['error']['code'];
-        }
-    }
+    $body        = json_decode(wp_remote_retrieve_body($response), true);
 
     if ($status_code !== 202) {
         m365_log_event(
             'fail',
             $recipients,
             $subject,
-            "Graph error ({$status_code}): {$error_msg}"
+            $body['error']['message'] ?? 'Graph rejected request'
         );
         return false;
     }
-
 
     m365_log_event('success', $recipients, $subject);
     return true;
@@ -320,14 +267,17 @@ add_filter('wp_mail', function ($args) {
     );
 
     if ($sent) {
-        add_filter('wp_mail_succeeded', function () {
-            return true;
-        }, 10, 0);
+        add_filter('wp_mail_succeeded', '__return_true', 10, 0);
     }
 
     return $args;
 });
 
+/**
+ * ==================================================
+ * AJAX: Save & Authenticate (no sender)
+ * ==================================================
+ */
 add_action('wp_ajax_m365_save_and_auth', function () {
 
     if (!current_user_can('manage_options')) {
@@ -336,33 +286,62 @@ add_action('wp_ajax_m365_save_and_auth', function () {
 
     check_ajax_referer('m365_save_auth_nonce', 'nonce');
 
-    // Save options
     update_option('m365_client_id', sanitize_text_field($_POST['m365_client_id'] ?? ''));
     update_option('m365_tenant_id', sanitize_text_field($_POST['m365_tenant_id'] ?? ''));
-    update_option('m365_from_email', sanitize_email($_POST['m365_from_email'] ?? ''));
 
     if (!empty($_POST['m365_client_secret'])) {
         update_option('m365_client_secret', sanitize_text_field($_POST['m365_client_secret']));
     }
 
-    // Force token refresh
     delete_transient('m365_graph_token');
 
-    // Try authenticating immediately
-    $token = m365_get_access_token();
-
-    if ($token) {
+    if (m365_get_access_token()) {
         m365_log_event('success', '-', 'Authentication successful');
-        wp_send_json_success([
-            'message' => 'Successfully authenticated with Microsoft 365.'
-        ]);
+        wp_send_json_success(['message' => 'Successfully authenticated with Microsoft 365.']);
     }
 
-    // Pull detailed error from logs
     $logs = get_option('m365_mail_logs', []);
     $last = end($logs);
 
-    wp_send_json_error([
-        'message' => $last['error'] ?? 'Authentication failed.'
-    ]);
+    wp_send_json_error(['message' => $last['error'] ?? 'Authentication failed.']);
+});
+
+/**
+ * ==================================================
+ * AJAX: Validate Sender Email
+ * ==================================================
+ */
+add_action('wp_ajax_m365_validate_sender', function () {
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Unauthorized']);
+    }
+
+    check_ajax_referer('m365_validate_sender_nonce', 'nonce');
+
+    $sender = sanitize_email($_POST['sender'] ?? '');
+
+    if (!is_email($sender)) {
+        wp_send_json_error(['message' => 'Invalid sender email address.']);
+    }
+
+    $result = m365_send_mail(
+        $sender,
+        'Sender validation',
+        '<p>Sender validation successful.</p>',
+        [],
+        [],
+        $sender
+    );
+
+    if ($result === true) {
+        update_option('m365_from_email', $sender);
+        m365_log_event('success', $sender, 'Sender validated');
+        wp_send_json_success(['message' => 'Sender email validated successfully.']);
+    }
+
+    $logs = get_option('m365_mail_logs', []);
+    $last = end($logs);
+
+    wp_send_json_error(['message' => $last['error'] ?? 'Sender validation failed.']);
 });
