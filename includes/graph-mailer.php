@@ -348,3 +348,53 @@ add_action('wp_ajax_m365_validate_sender', function () {
 
     wp_send_json_error(['message' => $last['error'] ?? 'Sender validation failed.']);
 });
+
+/**
+ * ==================================================
+ * AJAX: Send Test Email
+ * ==================================================
+ */
+add_action('wp_ajax_m365_send_test_email', function () {
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Unauthorized']);
+    }
+
+    check_ajax_referer('m365_test_email_nonce', 'nonce');
+
+    $to = sanitize_email($_POST['email'] ?? '');
+
+    if (!is_email($to)) {
+        wp_send_json_error([
+            'message' => 'Invalid recipient email address.'
+        ]);
+    }
+
+    // Sender MUST already be validated & saved
+    $from = get_option('m365_from_email');
+    if (!$from) {
+        wp_send_json_error([
+            'message' => 'Sender email is not configured or validated.'
+        ]);
+    }
+
+    $subject = 'Microsoft 365 Mailer – Test Email';
+    $message = '<p>✅ This is a test email sent successfully using Microsoft 365 Mailer.</p>';
+
+    $sent = m365_send_mail($to, $subject, $message);
+
+    if ($sent === true) {
+        wp_send_json_success([
+            'message' => 'Test email sent successfully.'
+        ]);
+    }
+
+    // Pull last log entry for detailed error
+    $logs = get_option('m365_mail_logs', []);
+    $last = end($logs);
+
+    wp_send_json_error([
+        'message' => $last['error'] ?? 'Failed to send test email.'
+    ]);
+});
+
