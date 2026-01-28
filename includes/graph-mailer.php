@@ -450,7 +450,7 @@ add_action('wp_ajax_m365_send_test_email', function () {
                 <p style="margin-top:30px;">
                     Regards,<br>
                     <strong>Md Fayazur Rahman</strong><br>
-                    Creator,<br>
+                    Contact: fayazur7@gmail.com,<br>
                     Microsoft 365 Mailer
                 </p>
 
