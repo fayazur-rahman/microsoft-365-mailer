@@ -129,71 +129,110 @@ function m365_render_settings_tab() {
 
     <hr>
 
-    <!-- Test Email -->
+    <!-- ============================= -->
+    <!-- AJAX Test Email Section -->
+    <!-- ============================= -->
+
     <h2>Send Test Email</h2>
 
-    <form method="post">
-        <?php wp_nonce_field('m365_test_email'); ?>
+    <div id="m365-test-email-box" style="max-width:420px;">
 
         <input type="email"
-               name="m365_test_email_to"
+               id="m365-test-email"
                class="regular-text"
-               placeholder="recipient@example.com"
-               required>
+               placeholder="recipient@example.com">
 
-        <?php submit_button('Send Test Email', 'secondary', 'm365_send_test'); ?>
-    </form>
+        <button type="button"
+                class="button button-secondary"
+                id="m365-send-test-btn"
+                style="margin-top:10px;">
+            Send Test Email
+        </button>
 
+        <span class="spinner"
+              id="m365-test-spinner"
+              style="float:none; margin-top:10px; display:none;"></span>
+
+        <div id="m365-test-result" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- ============================= -->
     <!-- Change Secret JS -->
+    <!-- ============================= -->
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const btn = document.getElementById('m365-change-secret');
+
+        /* Change Client Secret */
+        const changeBtn = document.getElementById('m365-change-secret');
+        if (changeBtn) {
+            changeBtn.addEventListener('click', function () {
+                changeBtn.parentNode.innerHTML = `
+                    <input type="password"
+                           class="regular-text"
+                           name="m365_client_secret"
+                           required
+                           autocomplete="new-password">
+                    <p class="description">
+                        Enter a new client secret value and save changes.
+                    </p>
+                `;
+            });
+        }
+
+        /* AJAX Test Email */
+        const btn     = document.getElementById('m365-send-test-btn');
+        const email   = document.getElementById('m365-test-email');
+        const spinner = document.getElementById('m365-test-spinner');
+        const result  = document.getElementById('m365-test-result');
+
         if (!btn) return;
 
         btn.addEventListener('click', function () {
-            btn.parentNode.innerHTML = `
-                <input type="password"
-                       class="regular-text"
-                       name="m365_client_secret"
-                       required
-                       autocomplete="new-password">
-                <p class="description">
-                    Enter a new client secret value and save changes.
-                </p>
-            `;
+
+            result.innerHTML = '';
+            spinner.style.display = 'inline-block';
+            btn.disabled = true;
+
+            fetch(ajaxurl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    action: 'm365_send_test_email',
+                    nonce: '<?php echo wp_create_nonce('m365_test_email_nonce'); ?>',
+                    email: email.value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+
+                spinner.style.display = 'none';
+                btn.disabled = false;
+
+                if (data.success) {
+                    result.innerHTML =
+                        '<div style="color:#0a7d00;font-weight:600;">✔ ' +
+                        data.data.message +
+                        '</div>';
+                } else {
+                    result.innerHTML =
+                        '<div style="color:#b32d2e;font-weight:600;">✖ Failed</div>' +
+                        '<div style="margin-top:6px;color:#555;">' +
+                        data.data.message +
+                        '</div>';
+                }
+            })
+            .catch(() => {
+                spinner.style.display = 'none';
+                btn.disabled = false;
+                result.innerHTML =
+                    '<div style="color:#b32d2e;">Unexpected error occurred.</div>';
+            });
         });
+
     });
     </script>
 
     <?php
 }
-
-/**
- * ==================================================
- * Handle Test Email Submit
- * ==================================================
- */
-add_action('admin_init', function () {
-
-    if (!isset($_POST['m365_send_test'])) {
-        return;
-    }
-
-    check_admin_referer('m365_test_email');
-
-    $to = sanitize_email($_POST['m365_test_email_to']);
-
-    if (empty($to)) {
-        return;
-    }
-
-    m365_send_mail(
-        $to,
-        'Microsoft 365 Mailer – Test Email',
-        '<h2>Success :-) </h2><p>This is a <strong>HTML test email</strong> sent via Microsoft 365 Mailer.</p>'
-    );
-
-    add_action('admin_notices', function () {
-        echo '<div class="notice notice-success"><p>Test email sent successfully.</p></div>';
-    });
-});

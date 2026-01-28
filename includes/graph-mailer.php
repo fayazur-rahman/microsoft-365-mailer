@@ -67,6 +67,48 @@ function m365_get_access_token() {
 
 /**
  * ==================================================
+ * AJAX: Send Test Email
+ * ==================================================
+ */
+add_action('wp_ajax_m365_send_test_email', function () {
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Unauthorized']);
+    }
+
+    check_ajax_referer('m365_test_email_nonce', 'nonce');
+
+    $to = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+
+    if (!is_email($to)) {
+        wp_send_json_error([
+            'message' => 'Invalid email address provided.'
+        ]);
+    }
+
+    $subject = 'Microsoft 365 Mailer – Test Email';
+    $message = '<h3>Success 🎉</h3><p>This is a test email sent via <strong>Microsoft 365 Mailer</strong>.</p>';
+
+    $result = m365_send_mail($to, $subject, $message);
+
+    if ($result === true) {
+        wp_send_json_success([
+            'message' => 'Test email sent successfully.'
+        ]);
+    }
+
+    // Pull last log entry for detailed error
+    $logs = get_option('m365_mail_logs', []);
+    $last = end($logs);
+
+    wp_send_json_error([
+        'message' => $last['error'] ?? 'Unknown error occurred.'
+    ]);
+});
+
+
+/**
+ * ==================================================
  * Prepare HTML body
  * ==================================================
  */
