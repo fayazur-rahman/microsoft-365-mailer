@@ -419,15 +419,11 @@ add_action('wp_ajax_m365_send_test_email', function () {
                 </p>
 
                 <p>
-                    Thank you for using <strong>Microsoft 365 Mailer</strong> Plugin —
-                    the ultimate Microsoft Graph–powered mailer plugin designed to
-                    ensure your WordPress emails are delivered reliably without SMTP.
+                    Thank you for using <strong>Microsoft 365 Mailer</strong> Plugin — the ultimate Microsoft Graph–powered mailer plugin designed to ensure your WordPress emails are delivered reliably without SMTP.
                 </p>
 
                 <p>
-                    Microsoft 365 Mailer is a <strong>free and open-source</strong> plugin,
-                    built with enterprise-grade security in mind and without vendor lock-in.
-                    You stay in full control of your Microsoft 365 infrastructure.
+                    Microsoft 365 Mailer is a <strong>free and open-source</strong> plugin, built with enterprise-grade security in mind and without vendor lock-in. You stay in full control of your Microsoft 365 infrastructure.
                 </p>
 
                 <p style="margin-top:30px;">
@@ -444,8 +440,7 @@ add_action('wp_ajax_m365_send_test_email', function () {
                     border-top:1px solid #eee;
                     padding-top:15px;
                 ">
-                    This email was sent from <strong>' . esc_html($site_name) . '</strong>
-                    at ' . esc_html($timestamp) . '
+                    This email was sent from <strong>' . esc_html($site_name) . '</strong> at ' . esc_html($timestamp) . '
                 </p>
             </div>
         </div>
